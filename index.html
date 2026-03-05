@@ -2,11 +2,11 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的通用五子棋</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的通用五子棋 - 手機修正版</title>
     <style>
-        body { display: flex; flex-direction: column; align-items: center; background: #f0f0f0; font-family: sans-serif; }
-        canvas { background: #e3b04b; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 95vw; height: auto; cursor: pointer; }
+        body { display: flex; flex-direction: column; align-items: center; background: #f0f0f0; font-family: sans-serif; touch-action: manipulation; }
+        canvas { background: #e3b04b; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 95vw; height: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
         .info { margin: 20px; font-size: 1.2rem; font-weight: bold; }
     </style>
 </head>
@@ -29,7 +29,7 @@
     function drawBoard() {
         ctx.strokeStyle = "#000";
         for (let i = 0; i <= count; i++) {
-            ctx.beginPath(); // 每一條線分開畫比較好
+            ctx.beginPath();
             ctx.moveTo(padding, padding + i * spacing);
             ctx.lineTo(padding + count * spacing, padding + i * spacing);
             ctx.moveTo(padding + i * spacing, padding);
@@ -61,18 +61,25 @@
         return false;
     }
 
+    // 修正後的點擊事件
     canvas.addEventListener('click', (e) => {
         if (gameOver || !isBlack) return;
+
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const x = (e.clientX - rect.left) * scaleX;
+        const y = (e.clientY - rect.top) * scaleY;
+
         const col = Math.round((x - padding) / spacing);
         const row = Math.round((y - padding) / spacing);
 
         if (row >= 0 && row <= 14 && col >= 0 && col <= 14 && board[row][col] === 0) {
             makeMove(row, col);
             if (!gameOver) {
-                setTimeout(computerMove, 500);
+                // 玩家下完後，延遲 300ms 讓電腦下棋
+                setTimeout(computerMove, 300);
             }
         }
     });
@@ -100,11 +107,7 @@
                 if (board[r][c] === 0) {
                     let attackScore = evaluateSpot(r, c, 2);
                     let defenseScore = evaluateSpot(r, c, 1);
-                    
-                    // 核心評分邏輯
                     let totalScore = attackScore + defenseScore;
-
-                    // 加一點「距離分數」，讓電腦開局會想下在中心
                     let distScore = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
                     totalScore += distScore;
 
