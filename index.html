@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的通用五子棋</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; background: #f0f0f0; font-family: sans-serif; }
+        canvas { background: #e3b04b; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 95vw; height: auto; cursor: pointer; }
+        .info { margin: 20px; font-size: 1.2rem; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="info" id="status">黑方下棋</div>
+    <canvas id="chessBoard" width="450" height="450"></canvas>
+    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px;">重新開始</button>
+
+    <script>
+    const canvas = document.getElementById('chessBoard');
+    const ctx = canvas.getContext('2d');
+    const status = document.getElementById('status');
+    const padding = 30;
+    const spacing = 30;
+    const count = 14;
+    let isBlack = true;
+    let gameOver = false;
+    let board = Array.from({ length: 15 }, () => Array(15).fill(0));
+
+    function drawBoard() {
+        ctx.strokeStyle = "#000";
+        for (let i = 0; i <= count; i++) {
+            ctx.beginPath(); // 每一條線分開畫比較好
+            ctx.moveTo(padding, padding + i * spacing);
+            ctx.lineTo(padding + count * spacing, padding + i * spacing);
+            ctx.moveTo(padding + i * spacing, padding);
+            ctx.lineTo(padding + i * spacing, padding + count * spacing);
+            ctx.stroke();
+        }
+    }
+
+    function drawPiece(row, col, color) {
+        ctx.beginPath();
+        ctx.arc(padding + col * spacing, padding + row * spacing, 13, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function checkWin(r, c, color) {
+        const directions = [[1,0], [0,1], [1,1], [1,-1]];
+        for (let [dr, dc] of directions) {
+            let cnt = 1;
+            for (let i = 1; i < 5; i++) {
+                if (board[r + dr*i]?.[c + dc*i] === color) cnt++; else break;
+            }
+            for (let i = 1; i < 5; i++) {
+                if (board[r - dr*i]?.[c - dc*i] === color) cnt++; else break;
+            }
+            if (cnt >= 5) return true;
+        }
+        return false;
+    }
+
+    canvas.addEventListener('click', (e) => {
+        if (gameOver || !isBlack) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const col = Math.round((x - padding) / spacing);
+        const row = Math.round((y - padding) / spacing);
+
+        if (row >= 0 && row <= 14 && col >= 0 && col <= 14 && board[row][col] === 0) {
+            makeMove(row, col);
+            if (!gameOver) {
+                setTimeout(computerMove, 500);
+            }
+        }
+    });
+
+    function makeMove(row, col) {
+        board[row][col] = isBlack ? 1 : 2;
+        drawPiece(row, col, isBlack ? "black" : "white");
+        if (checkWin(row, col, board[row][col])) {
+            status.innerText = (isBlack ? "黑方" : "白方") + " 獲勝了！";
+            gameOver = true;
+        } else {
+            isBlack = !isBlack;
+            status.innerText = isBlack ? "黑方下棋" : "白方下棋";
+        }
+    }
+
+    function computerMove() {
+        if (gameOver) return;
+
+        let bestScore = -1;
+        let bestSpots = [];
+
+        for (let r = 0; r < 15; r++) {
+            for (let c = 0; c < 15; c++) {
+                if (board[r][c] === 0) {
+                    let attackScore = evaluateSpot(r, c, 2);
+                    let defenseScore = evaluateSpot(r, c, 1);
+                    
+                    // 核心評分邏輯
+                    let totalScore = attackScore + defenseScore;
+
+                    // 加一點「距離分數」，讓電腦開局會想下在中心
+                    let distScore = (7 - Math.abs(r - 7)) + (7 - Math.abs(c - 7));
+                    totalScore += distScore;
+
+                    if (totalScore > bestScore) {
+                        bestScore = totalScore;
+                        bestSpots = [{r, c}];
+                    } else if (totalScore === bestScore) {
+                        bestSpots.push({r, c});
+                    }
+                }
+            }
+        }
+
+        if (bestSpots.length > 0) {
+            const spot = bestSpots[Math.floor(Math.random() * bestSpots.length)];
+            makeMove(spot.r, spot.c);
+        }
+    }
+
+    function evaluateSpot(r, c, color) {
+        let score = 0;
+        const directions = [[1,0], [0,1], [1,1], [1,-1]];
+        for (let [dr, dc] of directions) {
+            let count = 0;
+            for (let i = 1; i < 5; i++) {
+                if (board[r + dr*i]?.[c + dc*i] === color) count++; else break;
+            }
+            for (let i = 1; i < 5; i++) {
+                if (board[r - dr*i]?.[c - dc*i] === color) count++; else break;
+            }
+            if (count >= 4) score += 10000;
+            else if (count === 3) score += 1000;
+            else if (count === 2) score += 100;
+            else if (count === 1) score += 10;
+        }
+        return score;
+    }
+
+    drawBoard();
+</script>
+</body>
+</html>
